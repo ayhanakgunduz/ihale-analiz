@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>İhale Analiz Parametre Rehberi</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 900px; margin: 0 auto; padding: 20px; background-color: #f4f7f6; }
+        .container { background-color: #fff; padding: 40px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; text-align: center; }
+        h2 { color: #2980b9; margin-top: 30px; border-left: 5px solid #3498db; padding-left: 15px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #3498db; color: white; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        .formula { background-color: #f8f9fa; border: 1px dashed #3498db; padding: 10px; margin: 5px 0; font-family: 'Courier New', Courier, monospace; font-weight: bold; }
+        .description { font-size: 0.95em; color: #555; }
+        .badge { background-color: #e67e22; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 İhale Analiz İstatistik Rehberi</h1>
+        <p>Hesaplanan istatistiksel parametrelerin açıklamaları ve ihale analizindeki önemleri aşağıda sunulmuştur:</p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Parametre</th>
+                    <th>Açıklama</th>
+                    <th>Formül / Mantık</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Min / Max</strong></td>
+                    <td class="description">İlgili kalem için verilen en düşük ve en yüksek birim fiyatları gösterir.</td>
+                    <td>Minimum & Maximum değerler</td>
+                </tr>
+                <tr>
+                    <td><strong>Aralik (Range)</strong></td>
+                    <td class="description">En yüksek ve en düşük teklif arasındaki farktır. Pazardaki rekabetin genişliğini veya belirsizliği yansıtır.</td>
+                    <td class="formula">Max - Min</td>
+                </tr>
+                <tr>
+                    <td><strong>Ortalama</strong></td>
+                    <td class="description">Verilen tüm tekliflerin aritmetik ortalamasıdır. İhalenin genel pazar seviyesini belirler.</td>
+                    <td class="formula">Σ(Teklifler) / n</td>
+                </tr>
+                <tr>
+                    <td><strong>Medyan (Q2)</strong></td>
+                    <td class="description">Teklifler sıraya dizildiğinde ortada kalan değerdir. Aşırı yüksek veya düşük tekliflerden (outliers) ortalama kadar etkilenmez.</td>
+                    <td>Merkezi Konum Ölçüsü</td>
+                </tr>
+                <tr>
+                    <td><strong>Standart Sapma</strong></td>
+                    <td class="description">Tekliflerin ortalamadan ne kadar uzaklaştığını gösterir. Yüksek sapma, firmalar arasındaki fiyat farkının çok açıldığını gösterir.</td>
+                    <td class="formula">Standart Sapma Formülü (σ)</td>
+                </tr>
+                <tr>
+                    <td><strong>CV (%)</strong></td>
+                    <td class="description">Varyasyon Katsayısı. Sapmanın ortalamaya bölünmüş halidir. "Göreceli Sapma" diyebiliriz. %30'un üzeri genellikle yüksek dengesizlik işaretidir.</td>
+                    <td class="formula">(Sapma / Ortalama) * 100</td>
+                </tr>
+                <tr>
+                    <td><strong>Q1 (1. Çeyrek)</strong></td>
+                    <td class="description">Tekliflerin en düşük %25'lik diliminin sınır değeridir.</td>
+                    <td>%25'lik Percentile</td>
+                </tr>
+                <tr>
+                    <td><strong>Q3 (3. Çeyrek)</strong></td>
+                    <td class="description">Tekliflerin %75'lik diliminin sınır değeridir.</td>
+                    <td>%75'lik Percentile</td>
+                </tr>
+                <tr>
+                    <td><strong>IQR</strong></td>
+                    <td class="description">Çeyrekler arası açıklık. Q3 ile Q1 arasındaki farktır. Orta kümedeki (en "normal" grup) fiyat makasını gösterir.</td>
+                    <td class="formula">Q3 - Q1</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>💡 Hızlı İpuçları</h2>
+        <ul>
+            <li><strong>Dengesizlik:</strong> Eğer <strong>CV (%)</strong> %40 ve üzerindeyse, firmalar ihaleyi veya kalemi çok farklı yorumlamış olabilir.</li>
+            <li><strong>Aykırı Fiyat:</strong> Ortalama ve Medyan arasında büyük fark varsa, bir firma piyasadan çok kopuk (çok yüksek veya çok düşük) bir fiyat vermiş demektir.</li>
+            <li><strong>Sıkışma:</strong> <strong>IQR</strong> değeri düşükse, firmalar bu kalemde rekabetçi ve birbirine yakın fiyatlar vermiş demektir.</li>
+        </ul>
+        
+        <p style="text-align: center; margin-top: 40px; color: #95a5a6; font-size: 0.8em;">İhale Analiz Modülü - Gelişmiş İstatistiksel Analiz Sistemi</p>
+    </div>
+</body>
+</html>
