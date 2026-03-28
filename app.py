@@ -41,6 +41,12 @@ st.markdown("""
 import os
 
 # =====================================================================
+# Directory Setup & Persistence Prep
+# =====================================================================
+if not os.path.exists("data"):
+    os.makedirs("data")
+
+# =====================================================================
 # State Management & Global Defaults (Initialize early)
 # =====================================================================
 if "processed_data" not in st.session_state:
