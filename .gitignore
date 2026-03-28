@@ -1,0 +1,8 @@
+.venv/
+__pycache__/
+*.xlsx
+*.xls
+data/
+*.pdf
+BASLAT.bat
+Ihale_Parametre_Rehberi.html
