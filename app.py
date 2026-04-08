@@ -60,6 +60,9 @@ if "p_values" not in st.session_state:
         "KRİTİK CV EŞİĞİ (%)": 30.0
     }
 
+if "firm_modifiers" not in st.session_state:
+    st.session_state["firm_modifiers"] = pd.DataFrame(columns=["Firma Adı", "Avantaj/Dezavantaj (%)"])
+
 if "chart_page" not in st.session_state:
     st.session_state["chart_page"] = 0
 
@@ -82,6 +85,7 @@ def clear_cache():
     if os.path.exists(CACHE_PATH): os.remove(CACHE_PATH)
     if os.path.exists(CACHE_META): os.remove(CACHE_META)
     st.session_state["processed_data"] = None
+    st.session_state["firm_modifiers"] = pd.DataFrame(columns=["Firma Adı", "Avantaj/Dezavantaj (%)"])
 
 # =====================================================================
 # Sidebar: Dosya Yükleme ve Veri Okuma
@@ -167,10 +171,11 @@ st.title("İhale Analiz Modülü")
 st.markdown("Modern, dinamik ve akıllı ihale istatistik & analiz platformu.")
 
 # Ana menü yapısı
-tab_dashboard, tab_data, tab_params, tab_stats, tab_outliers, tab_corr, tab_heatmap, tab_perf = st.tabs([
+tab_dashboard, tab_data, tab_params, tab_strategic, tab_stats, tab_outliers, tab_corr, tab_heatmap, tab_perf = st.tabs([
     "📈 Dashboard", 
     "🗂️ Organize Veri", 
     "⚙️ Parametreler",
+    "🎯 Stratejik Ayarlar",
     "📊 İstatistikler", 
     "⚠️ Aykırı Değerler", 
     "🔗 Korelasyon", 
@@ -185,6 +190,21 @@ if data:
     df_org = data['organized']
     meta_cols = data['meta_cols']
     firm_cols = data['firm_cols']
+    
+    # =====================================================================
+    # Price Adjustment Logic (Evaluation Data)
+    # =====================================================================
+    df_eval = df_org.copy()
+    for _, row in st.session_state["firm_modifiers"].iterrows():
+        firm = row["Firma Adı"]
+        mod = row["Avantaj/Dezavantaj (%)"]
+        if mod != 0 and firm in df_eval.columns:
+            # Formül: Değerlendirme_Fiyatı = Gerçek_Fiyat * (1 + (Mod / 100))
+            df_eval[firm] = df_eval[firm] * (1 + (mod / 100))
+else:
+    df_org = None
+    df_eval = None
+    firm_cols = []
 
 # Excel'den yeni veri yüklendiyse parametreleri bir kez güncelle
 if data and uploaded_file and st.session_state.get("last_uploaded") != uploaded_file.name:
@@ -210,22 +230,22 @@ with tab_dashboard:
     if data:
         excel_totals = data.get('excel_totals', None)
         curr = data.get('currency', '₺')
-        kpis = analysis.create_dashboard_kpis(df_org, firm_cols, excel_totals)
+        kpis = analysis.create_dashboard_kpis(df_eval, firm_cols, excel_totals)
         
         # Premium KPI Layout
         col1, col2, col3, col4 = st.columns(4)
         col1.markdown(f"<div class='metric-card'><div class='metric-title'>Toplam Kalem</div><div class='metric-value'>{kpis['toplam_kalem']}</div></div>", unsafe_allow_html=True)
         col2.markdown(f"<div class='metric-card'><div class='metric-title'>Firma Sayısı</div><div class='metric-value'>{kpis['firma_sayisi']}</div></div>", unsafe_allow_html=True)
-        col3.markdown(f"<div class='metric-card'><div class='metric-title'>Ort. İhale Bedeli</div><div class='metric-value'>{curr} {kpis['ortalama_ihale_bedeli']:,.2f}</div></div>", unsafe_allow_html=True)
-        col4.markdown(f"<div class='metric-card'><div class='metric-title'>En Düşük Toplam</div><div class='metric-value'>{curr} {kpis['en_dusuk_tutar']:,.2f}</div></div>", unsafe_allow_html=True)
+        col3.markdown(f"<div class='metric-card'><div class='metric-title'>Ort. İhale Bedeli (Düzeltilmiş)</div><div class='metric-value'>{curr} {kpis['ortalama_ihale_bedeli']:,.2f}</div></div>", unsafe_allow_html=True)
+        col4.markdown(f"<div class='metric-card'><div class='metric-title'>En Düşük Toplam (Düzeltilmiş)</div><div class='metric-value'>{curr} {kpis['en_dusuk_tutar']:,.2f}</div></div>", unsafe_allow_html=True)
         
         st.write("---")
-        st.subheader("🏆 İhale En Düşük Teklif Sahibi: " + kpis['en_dusuk_teklif_firma'])
+        st.subheader("🏆 İhale En Düşük Teklif Sahibi (Düzeltilmiş): " + kpis['en_dusuk_teklif_firma'])
         
         # İhale Kıyaslama Grafiği (Tam Genişlik)
-        chart_fig = analysis.generate_total_bids_chart(df_org, firm_cols, excel_totals, curr)
+        chart_fig = analysis.generate_total_bids_chart(df_eval, firm_cols, excel_totals, curr)
         if chart_fig:
-            st.write("### İhaleye Teklif Veren Firmaların Kıyaslaması")
+            st.write("### İhaleye Teklif Veren Firmaların Kıyaslaması (Düzeltilmiş Fiyatlar)")
             st.plotly_chart(chart_fig, width="stretch")
         else:
             st.warning("📊 Karşılaştırma grafiği için yeterli veri bulunamadı.")
@@ -233,8 +253,8 @@ with tab_dashboard:
         st.write("---")
 
         # Firma Başarı Tablosu (Tam Genişlik)
-        st.markdown("#### 🥇 Firma Başarısı (Kalem Bazında En Düşük Teklifler)")
-        lowest_bid_stats = analysis.calculate_lowest_bid_stats(df_org, firm_cols)
+        st.markdown("#### 🥇 Firma Başarısı (Kalem Bazında En Düşük Düzeltilmiş Teklifler)")
+        lowest_bid_stats = analysis.calculate_lowest_bid_stats(df_eval, firm_cols)
         # Yüksekliği firma sayısına göre dinamik hesapla
         dynamic_height = min((len(lowest_bid_stats) + 1) * 35 + 5, 500)
         st.dataframe(lowest_bid_stats, width="stretch", hide_index=True, height=dynamic_height)
@@ -326,11 +346,59 @@ with tab_params:
         st.latex(r"Limit = \mu - (k \times \sigma)")
         st.caption("Örnek: Ortalama=100, SS=15, k=0.5 için Sınır=92.5")
 
+with tab_strategic:
+    st.markdown("<h2 style='text-align: center; color: #2c3e50;'>🎯 FİRMA AVANTAJ / DEZAVANTAJ TANIMLARI</h2>", unsafe_allow_html=True)
+    st.markdown("""
+        <div style='background-color: #e0f2fe; padding: 15px; border-radius: 10px; color: #0369a1; margin-bottom: 20px;'>
+            <b>💡 Nasıl Çalışır?</b><br>
+            • <b>Avantaj (Yerli Malı vb.):</b> Negatif değer girin (Örn: -15). Bu firmanın fiyatı kıyaslama yapılırken %15 düşük sayılır.<br>
+            • <b>Dezavantaj:</b> Pozitif değer girin (Örn: 10). Bu firmanın fiyatı kıyaslama yapılırken %10 yüksek sayılır.<br>
+            • <i>Not: Bu ayarlar sadece analizleri etkiler, dosyadaki orijinal birim fiyatları değiştirmez.</i>
+        </div>
+    """, unsafe_allow_html=True)
+
+    if data:
+        # Firmaları kolonlardan al
+        current_firms = firm_cols
+        
+        # Eğer firma listesi değiştiyse veya henüz oluşmadıysa güncelle
+        existing_firms = st.session_state["firm_modifiers"]["Firma Adı"].tolist()
+        if set(current_firms) != set(existing_firms):
+            st.session_state["firm_modifiers"] = pd.DataFrame({
+                "Firma Adı": current_firms,
+                "Avantaj/Dezavantaj (%)": 0.0
+            })
+
+        # Veri düzenleyici (Data Editor)
+        st.session_state["firm_modifiers"] = st.data_editor(
+            st.session_state["firm_modifiers"],
+            column_config={
+                "Firma Adı": st.column_config.Column(disabled=True),
+                "Avantaj/Dezavantaj (%)": st.column_config.NumberColumn(
+                    format="%d %%", min_value=-50.0, max_value=100.0, step=0.5
+                )
+            },
+            hide_index=True, use_container_width=True
+        )
+        
+        # Özet Bilgi
+        active_mods = st.session_state["firm_modifiers"][st.session_state["firm_modifiers"]["Avantaj/Dezavantaj (%)"] != 0]
+        if not active_mods.empty:
+            st.success(f"✅ {len(active_mods)} firma için fiyat düzeltmesi aktif.")
+        else:
+            st.info("ℹ️ Şu an tüm firmalar için gerçek fiyatlar üzerinden analiz yapılıyor.")
+    else:
+        st.warning("Firmaları listelemek için lütfen önce veri yükleyin.")
+
+# =====================================================================
+# Price Adjustment Logic (Old position - cleared)
+# =====================================================================
+
 with tab_stats:
     st.header("📊 İş Kalemleri Bazında İstatistikler")
     if data:
         cv_limit = st.session_state["p_values"]["KRİTİK CV EŞİĞİ (%)"]
-        stats_df = analysis.calculate_item_statistics(df_org, firm_cols, cv_limit)
+        stats_df = analysis.calculate_item_statistics(df_eval, firm_cols, cv_limit)
         
         # Dinamik Renklendirme Mantığı
         def style_stats_table(row):
@@ -439,7 +507,7 @@ with tab_outliers:
         o_tab1, o_tab2, o_tab3 = st.tabs(["📊 Z-Skoru (Genel)", "📉 IQR (Çeyrekler)", "⚠️ Aşırı Düşük (k-Faktörü)"])
         
         with o_tab1:
-            outliers_z = analysis.detect_outliers_zscore(df_org, firm_cols, z_thresh)
+            outliers_z = analysis.detect_outliers_zscore(df_eval, firm_cols, z_thresh)
             if not outliers_z.empty:
                 st.dataframe(outliers_z, width="stretch", hide_index=True)
                 st.caption("✨ 'Not' sütununda 'Akıllı Eşik' yazan kalemlerde, düşük katılımcı sayısı nedeniyle hassasiyet otomatik artırılmıştır.")
@@ -447,14 +515,14 @@ with tab_outliers:
                 st.success("✅ **Z-Skoru Analizi:** Pazar çok tutarlı. Belirlenen eşiğin dışında uç teklif bulunamadı.")
             
         with o_tab2:
-            outliers_iqr = analysis.detect_outliers_iqr(df_org, firm_cols, iqr_fact)
+            outliers_iqr = analysis.detect_outliers_iqr(df_eval, firm_cols, iqr_fact)
             if not outliers_iqr.empty:
                 st.dataframe(outliers_iqr, width="stretch", hide_index=True)
             else:
                 st.success("✅ **IQR Analizi:** Pazarın merkez dağılımı dışında kalan (çeyrek dışı) teklif tespit edilmedi.")
             
         with o_tab3:
-            outliers_k = analysis.detect_low_bids_k_factor(df_org, firm_cols, k_val)
+            outliers_k = analysis.detect_low_bids_k_factor(df_eval, firm_cols, k_val)
             if not outliers_k.empty:
                 st.dataframe(outliers_k, width="stretch", hide_index=True)
             else:
@@ -480,9 +548,9 @@ with tab_corr:
             *Basitçe ifade edersek;* Excel'deki her bir satır (kalem) bir veri noktasıdır ve grafiksel olarak iki firmanın teklifleri üst üste biniyorsa korelasyon yüksek çıkar.
             """)
         
-        corr_matrix = analysis.create_correlation_matrix(df_org, firm_cols)
+        corr_matrix = analysis.create_correlation_matrix(df_eval, firm_cols)
         st.plotly_chart(analysis.generate_heatmap_figure(corr_matrix), width="stretch")
-        st.info("💡 **İpucu:** Kırmızı bölgeler (1.00'a yakın) kuvvetli benzerliği, mavi bölgeler ise düşük benzerliği temsil eder.")
+        st.info("💡 **İpucu:** Kırmızı bölgeler (1.00'a yakın) kuvvetli benzerliği, mavi bölgeler ise düşük benzerliği temsil eder. (Düzeltilmiş Fiyatlar üzerinden hesaplanmıştır)")
 
 with tab_heatmap:
     st.header("🔥 Kalem Bazlı Teklif Isı Haritası (Trafik Işığı Analizi)")
@@ -490,7 +558,7 @@ with tab_heatmap:
         st.write("Aşağıdaki tabloda her bir iş kalemi için firmaların teklifleri **satır bazında** (Excel stili) renklendirilmiştir. "
                  "**Yeşil** en ucuz, **Sarı** ortalama, **Kırmızı** ise en pahalı teklifi temsil eder.")
         
-        display_df = df_org.copy()
+        display_df = df_eval.copy()
         for col in firm_cols:
             display_df[col] = pd.to_numeric(display_df[col], errors='coerce')
         
@@ -511,7 +579,7 @@ with tab_heatmap:
         )
         
         st.dataframe(styled_df, width="stretch", hide_index=True, height=600)
-        st.info("💡 Her satır bir ihale kalemi için pazarın 'Trafik Işığı' analizidir. Yeşil=En Ucuz, Sarı=Ortalama, Kırmızı=Pahalı.")
+        st.info("💡 Her satır bir ihale kalemi için pazarın 'Trafik Işığı' analizidir. Yeşil=En Ucuz, Sarı=Ortalama, Kırmızı=Pahalı. (Düzeltilmiş Fiyatlar üzerinden)")
 
 with tab_perf:
     st.header("🏢 Firma Rekabet Profili")
@@ -539,7 +607,7 @@ with tab_perf:
                 selected_firms = st.multiselect("Kıyaslanacak Firmaları Seçin", firm_cols, default=default_val)
         
         # Seçilen moda göre veriyi hazırla
-        plot_df = df_org.copy()
+        plot_df = df_eval.copy()
         if view_mode == "Fiyat Büyüklüğü (Artan)":
             # Satır bazlı ortalama fiyatı bulup ona göre sırala (Gruplama etkisi yaratır)
             plot_df['avg_row_price'] = plot_df[firm_cols].mean(axis=1)
